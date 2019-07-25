@@ -1,0 +1,2 @@
+C:\Users\Thirumal\Documents\MyProjects\SendEmail\SendEmailReceiveEmail\SendEmailReceiveEmail\obj\Debug\SendEmailReceiveEmail.csprojAssemblyReference.cache
+C:\Users\Thirumal\Documents\MyProjects\SendEmail\SendEmailReceiveEmail\SendEmailReceiveEmail\obj\Debug\SendEmailReceiveEmail.csproj.CoreCompileInputs.cache
