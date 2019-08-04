@@ -23,8 +23,8 @@ namespace SendEmailReceiveEmail
 
             Message mailbody = new Message()
             {
-                Body = new ItemBody() { Content = "This is Test email from console application", ContentType = BodyType.Text },
-                Subject = "Test Mail",
+                Body = new ItemBody() { Content = Constants.getTemplate1(), ContentType = BodyType.Html },
+                Subject = Constants.template1Subject,
                 ToRecipients = new List<Recipient>()
                 {
                     toRec
