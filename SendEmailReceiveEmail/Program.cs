@@ -23,7 +23,7 @@ namespace SendEmailReceiveEmail
 
             Message mailbody = new Message()
             {
-                Body = new ItemBody() { Content = Constants.getTemplate1(), ContentType = BodyType.Html },
+                Body = new ItemBody() { Content = Constants.getTemplate1("bkd1"), ContentType = BodyType.Html },
                 Subject = Constants.template1Subject,
                 ToRecipients = new List<Recipient>()
                 {
