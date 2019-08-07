@@ -5,7 +5,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
 using Microsoft.Graph;
-using Microsoft.Extensions.Configuration;
+using System.Linq;
 
 namespace SendEmailReceiveEmail
 {
@@ -18,7 +18,8 @@ namespace SendEmailReceiveEmail
             var userid = "f51bd33a-2d64-4b09-9b85-7c4efc24b16c";
             GraphServiceClient graphClient = GetAuthenticatedGraphClient();
             var mailboxhelper = new MailboxHelper(graphClient);
-            List<ResultsItem> items = mailboxhelper.ListInboxMessages(userid).Result;
+            List<Message> inboxitems = mailboxhelper.ListInboxMessages(userid,"test").Result;
+            List<Message> sentitems = mailboxhelper.ListSentMessages(userid, "string").Result;
             var toRec = new Recipient() { EmailAddress = new EmailAddress() { Address = "tka@cloudmission.net" } };
 
             Message mailbody = new Message()
@@ -31,7 +32,7 @@ namespace SendEmailReceiveEmail
                 }
             };
 
-             await mailboxhelper.SendDKBSMail(userid, mailbody);
+             //await mailboxhelper.SendDKBSMail(userid, mailbody);
         }
 
         private static GraphServiceClient GetAuthenticatedGraphClient()
@@ -104,23 +105,45 @@ namespace SendEmailReceiveEmail
             _graphClient = graphClient;
         }
 
-        public async Task<List<ResultsItem>> ListInboxMessages(string userid)
+        /// <summary>
+        /// MEthod for fetching the Inbox messages
+        /// </summary>
+        /// <param name="userid">Messages from which user</param>
+        /// <param name="searchparam1">filter parameter for the subject</param>
+        /// <returns></returns>
+        public async Task<List<Message>> ListInboxMessages(string userid,string searchparam)
+        {
+            //List<ResultsItem> items = new List<ResultsItem>();
+
+            IMailFolderMessagesCollectionPage messages = await _graphClient.Users[userid].MailFolders.Inbox.Messages.Request().Top(100).GetAsync();
+            //List<Message> fmsgs = messages.ToList<Message>().Where(i => i.Subject.ToLower().Contains(searchparam)).ToList<Message>();
+            //if (messages?.Count > 0)
+            //{
+            //    foreach (Message message in messages)
+            //    {
+            //        items.Add(new ResultsItem
+            //        {
+            //            Subject = message.Subject,
+            //            Id = message.Id
+            //        });
+            //    }
+            //}
+
+            return messages.ToList().Where(i => i.Subject.ToLower().Contains(searchparam)).ToList<Message>();
+        }
+
+        public async Task<List<Message>> ListSentMessages(string userid,string fparam1)
         {
             List<ResultsItem> items = new List<ResultsItem>();
 
-            IMailFolderMessagesCollectionPage messages = await _graphClient.Users[userid].MailFolders.Inbox.Messages.Request().Top(10).GetAsync();
-            if (messages?.Count > 0)
+            List<QueryOption> options = new List<QueryOption>()
             {
-                foreach (Message message in messages)
-                {
-                    items.Add(new ResultsItem
-                    {
-                        Display = message.Subject,
-                        Id = message.Id
-                    });
-                }
-            }
-            return items;
+                new QueryOption("filter","folder ne null"),
+                new QueryOption("select","id,name,webUrl")
+             };
+
+            IMailFolderMessagesCollectionPage messages = await _graphClient.Users[userid].MailFolders.SentItems.Messages.Request().Top(100).GetAsync();
+            return messages.ToList().Where(i => i.Subject.ToLower().Contains(fparam1)).ToList<Message>();
         }
 
         public async Task SendDKBSMail(string userid,Message mailmessage)
@@ -140,7 +163,7 @@ namespace SendEmailReceiveEmail
 
         // The ID and display name for the entity's radio button.
         public string Id { get; set; }
-        public string Display { get; set; }
+        public string Subject { get; set; }
 
         // The properties of an entity that display in the UI.
         public Dictionary<string, object> Properties;
