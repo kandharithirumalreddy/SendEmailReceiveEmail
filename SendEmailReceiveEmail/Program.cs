@@ -18,21 +18,70 @@ namespace SendEmailReceiveEmail
             var userid = "f51bd33a-2d64-4b09-9b85-7c4efc24b16c";
             GraphServiceClient graphClient = GetAuthenticatedGraphClient();
             var mailboxhelper = new MailboxHelper(graphClient);
-            List<Message> inboxitems = mailboxhelper.ListInboxMessages(userid,"test").Result;
-            List<Message> sentitems = mailboxhelper.ListSentMessages(userid, "string").Result;
+            Console.WriteLine("FRom Inbox");
+            //List<Message> inboxitems = mailboxhelper.ListInboxMessages(userid, "test").Result;
+            List<Message> inboxitems = mailboxhelper.ListInboxMessages(userid, string.Empty).Result;
+            foreach (var item in inboxitems)
+            {
+                if (item.HasAttachments == true)
+                {
+                    var mailattachments = mailboxhelper.GetInboxMessageAttachments(userid, item.Id).Result;
+                    if (mailattachments != null)
+                    {
+                        foreach (var mailattachment in mailattachments)
+                        {
+                            Console.WriteLine(mailattachment.Name);
+                        }
+                    }
+                }
+            }
+            Console.WriteLine("FRom Sent Items");
+            //List<Message> sentitems = mailboxhelper.ListSentMessages(userid, "string").Result;
+            List<Message> sentitems = mailboxhelper.ListSentMessages(userid, string.Empty).Result;
+            foreach (var item in sentitems)
+            {
+                if (item.HasAttachments==true)
+                {
+                    List<Attachment> mailattachments = mailboxhelper.GetMessageAttachments(userid, item.Id).Result;
+                    if (mailattachments != null)
+                    {
+                        foreach (var mailattachment in mailattachments)
+                        {
+                            Console.WriteLine(mailattachment.Name);
+                        }
+                    }
+                }
+            }
             var toRec = new Recipient() { EmailAddress = new EmailAddress() { Address = "tka@cloudmission.net" } };
-
+            byte[] contentBytes1 = System.IO.File.ReadAllBytes(@"C:\Users\dines\Downloads\AdvancedEnzyme.pdf");
+            byte[] contentBytes2 = System.IO.File.ReadAllBytes(@"C:\Users\dines\Downloads\Lupin.pdf");
+            IMessageAttachmentsCollectionPage attachments = new MessageAttachmentsCollectionPage();
+            attachments.Add(new FileAttachment
+            {
+                ODataType = "#microsoft.graph.fileAttachment",
+                ContentBytes = contentBytes2,
+                ContentType = "Application/pdf",
+                Name = "Lupin.pdf"
+            });
+            attachments.Add(new FileAttachment
+            {
+                ODataType = "#microsoft.graph.fileAttachment",
+                ContentBytes = contentBytes1,
+                ContentType = "Application/pdf",
+                Name = "AdvancedEnzyme.pdf"
+            });
             Message mailbody = new Message()
             {
                 Body = new ItemBody() { Content = Constants.getTemplate1("bkd1"), ContentType = BodyType.Html },
                 Subject = Constants.template1Subject,
+                Attachments = attachments,
                 ToRecipients = new List<Recipient>()
                 {
                     toRec
                 }
             };
 
-             //await mailboxhelper.SendDKBSMail(userid, mailbody);
+            await mailboxhelper.SendDKBSMail(userid, mailbody);
         }
 
         private static GraphServiceClient GetAuthenticatedGraphClient()
@@ -111,7 +160,7 @@ namespace SendEmailReceiveEmail
         /// <param name="userid">Messages from which user</param>
         /// <param name="searchparam1">filter parameter for the subject</param>
         /// <returns></returns>
-        public async Task<List<Message>> ListInboxMessages(string userid,string searchparam)
+        public async Task<List<Message>> ListInboxMessages(string userid, string searchparam)
         {
             //List<ResultsItem> items = new List<ResultsItem>();
 
@@ -128,11 +177,14 @@ namespace SendEmailReceiveEmail
             //        });
             //    }
             //}
-
+            if (string.IsNullOrWhiteSpace(searchparam))
+            {
+                return messages.ToList();
+            }
             return messages.ToList().Where(i => i.Subject.ToLower().Contains(searchparam)).ToList<Message>();
         }
 
-        public async Task<List<Message>> ListSentMessages(string userid,string fparam1)
+        public async Task<List<Message>> ListSentMessages(string userid, string fparam1)
         {
             List<ResultsItem> items = new List<ResultsItem>();
 
@@ -143,13 +195,30 @@ namespace SendEmailReceiveEmail
              };
 
             IMailFolderMessagesCollectionPage messages = await _graphClient.Users[userid].MailFolders.SentItems.Messages.Request().Top(100).GetAsync();
+            if (string.IsNullOrEmpty(fparam1))
+            {
+                return messages.ToList();
+            }
             return messages.ToList().Where(i => i.Subject.ToLower().Contains(fparam1)).ToList<Message>();
         }
 
-        public async Task SendDKBSMail(string userid,Message mailmessage)
+        public async Task<List<Attachment>> GetMessageAttachments(string userid,string messageid)
         {
-            try { 
-            await _graphClient.Users[userid].SendMail(mailmessage, true).Request().PostAsync();
+            IMessageAttachmentsCollectionPage attachments = await _graphClient.Users[userid].MailFolders.SentItems.Messages[messageid].Attachments.Request().GetAsync();
+            return attachments.ToList();
+        }
+        
+        public async Task<List<Attachment>> GetInboxMessageAttachments(string userid, string messageid)
+        {
+            IMessageAttachmentsCollectionPage attachments = await _graphClient.Users[userid].MailFolders.Inbox.Messages[messageid].Attachments.Request().GetAsync();
+            return attachments.ToList();
+        }
+
+        public async Task SendDKBSMail(string userid, Message mailmessage)
+        {
+            try
+            {
+                await _graphClient.Users[userid].SendMail(mailmessage, true).Request().PostAsync();
             }
             catch (Exception ex)
             {
